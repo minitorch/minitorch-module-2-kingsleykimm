@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from numpy import array, float64
 from typing_extensions import TypeAlias
-
+import math
 from .operators import prod
 
 MAX_DIMS = 32
@@ -43,8 +43,8 @@ def index_to_position(index: Index, strides: Strides) -> int:
         Position in storage
     """
 
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+    # the general formula is that it is [s1 * ind1 + s2 * ind2, s3 * ind3
+    return np.dot(index, strides)
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -60,8 +60,12 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+
+    # if we have shape (s1,... sn), then any index will first take some amount 
+    for i in range(len(shape) -1, -1, -1):
+        ind = ordinal % shape[i]
+        out_index[i] = ind
+        ordinal = ordinal // shape[i]
 
 
 def broadcast_index(
@@ -83,14 +87,21 @@ def broadcast_index(
     Returns:
         None
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    # so is this method just matching up different shapes that match up?
+    for i in range(len(out_index) -1, -1, -1):
+        if shape[i] == 1:
+            out_index[i] = 0
+        else:
+            out_index[i] = big_index[i]
+
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     """
     Broadcast two shapes to create a new union shape.
-
+    Rule 1 : ANy dimension of size 1 can be zipped with dimensions of size n > 1
+    Rule 2: Extra dimensions of hsape 1 can be added to ensure they have the same numbers
+    Rule 3: ANy extra dimension of size 1 can only be implicitly added to the left side of shape
     Args:
         shape1 : first shape
         shape2 : second shape
@@ -101,8 +112,28 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     Raises:
         IndexingError : if cannot broadcast
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    
+    min_ = min(len(shape1), len(shape2))
+    # just pad the smaller one with oens
+    if len(shape1) < len(shape2):
+        shape1 = [1] * (len(shape2) - len(shape1)) + list(shape1)
+    elif len(shape2) < len(shape1):
+        shape2 = [1] * (len(shape1) - len(shape2)) + list(shape2)
+    new_shape = []
+    for shape_ind in range(len(shape1) -1, -1, -1):
+        s1, s2 = shape1[shape_ind], shape2[shape_ind]
+        if (s1 == 1) != (s2 == 1) or s1 == s2:
+            # if only 1 of them equals 1, that's ok
+            new_shape = [max(s1, s2)] + new_shape
+        else:
+            raise IndexingError(f"Array to be broadcasted has two greater than 1 shapes: {s1}, {s2}")
+    # after the min is finished, append any remainders
+    # after we completed the min_ starting from the right side, any remainders are now len(shapex) - min_, so like 5 - 3 = 2
+    return tuple(new_shape)
+
+
+        
+
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
@@ -222,8 +253,11 @@ class TensorData:
             range(len(self.shape))
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
 
-        # TODO: Implement for Task 2.1.
-        raise NotImplementedError("Need to implement for Task 2.1")
+        # just reorder iwht different way
+        new_shape = tuple([self.shape[o] for o in order])
+        new_strides = tuple([self.strides[o] for o in order])
+        return TensorData(self._storage, new_shape, new_strides) # order is now the new strides, because strides dictate how we move around the 1d contiguous block of memory
+        
 
     def to_string(self) -> str:
         s = ""

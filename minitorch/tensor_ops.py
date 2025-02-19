@@ -269,7 +269,21 @@ def tensor_map(fn: Callable[[float], float]) -> Any:
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+
+        if out_shape == in_shape: # same size tensors
+            for ind in range(len(out)):
+                out[ind] = fn(in_storage[ind])
+        else:
+            if in_shape > out_shape:
+                raise Exception
+            for ind in range(len(out)):
+                big_index = np.ndarray(out_shape)
+                to_index(ind, out_shape, big_index)
+                # cur_index now stores the out tensor's index
+                smaller_index = np.ndarray(in_shape)
+                broadcast_index(big_index, out_shape, in_shape, smaller_index)
+                out[ind] = fn(in_storage[index_to_position(smaller_index, in_strides)])
+            
 
     return _map
 
@@ -319,8 +333,25 @@ def tensor_zip(fn: Callable[[float, float], float]) -> Any:
         b_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
-
+        if out_shape == a_shape:
+            for ind in range(len(a_storage)):
+                # we know that a and b have the same size
+                a_ordinal = ind
+                b_ind = np.ndarray(b_shape)
+                to_index(a_ordinal, b_shape, b_ind)
+                b_ordinal = index_to_position(b_ind, b_strides)
+                result = fn(a_storage[a_ordinal], b_storage[b_ordinal])
+                out[a_ordinal] = result
+        else:
+            # now we know that a_shape and b_shape are the same, so we wan to use the out_shape instead
+            for ind in range(len(out)):
+                out_ordinal = ind
+                a_ind, b_ind, out_ind = np.ndarray(a_shape), np.ndarray(b_shape), np.ndarray(out_shape)
+                to_index(out_ordinal, out_shape, out_ind)
+                broadcast_index(out_ind, out_shape, b_shape, b_ind)
+                broadcast_index(out_ind, out_shape, a_shape, a_ind)
+                a_ordinal, b_ordinal = index_to_position(a_ind, a_strides), index_to_position(b_ind, b_strides)
+                out[out_ordinal] = fn(a_storage[a_ordinal], b_storage[b_ordinal])
     return _zip
 
 
@@ -354,8 +385,7 @@ def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        # out shape is the same s in shape but 
 
     return _reduce
 

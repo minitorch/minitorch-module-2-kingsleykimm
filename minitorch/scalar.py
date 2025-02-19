@@ -18,6 +18,7 @@ from .scalar_functions import (
     ReLU,
     ScalarFunction,
     Sigmoid,
+    GT
 )
 
 ScalarLike = Union[float, int, "Scalar"]
@@ -84,51 +85,68 @@ class Scalar:
 
     def __mul__(self, b: ScalarLike) -> Scalar:
         return Mul.apply(self, b)
+        # so the reason we use scalarfunction as static classes with a class method that calls apply and stores everything is for the ability to store historise and scalars inside
+        # mul.apply here will return a new scalar that has a scalar history of MUL along with the context which contains the gradient and any values when we're performing backpropagain
 
     def __truediv__(self, b: ScalarLike) -> Scalar:
         return Mul.apply(self, Inv.apply(b))
+        # a = Scalar()
+        # ret = a / b?
 
     def __rtruediv__(self, b: ScalarLike) -> Scalar:
         return Mul.apply(b, Inv.apply(self))
+        # Implements b / a
 
     def __add__(self, b: ScalarLike) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return Add.apply(self, b)
 
     def __bool__(self) -> bool:
         return bool(self.data)
 
     def __lt__(self, b: ScalarLike) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return LT.apply(self, b)
 
     def __gt__(self, b: ScalarLike) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # a > b
+        # TODO: Implement for Task 1.2.
+
+        return GT.apply(self, b)
 
     def __eq__(self, b: ScalarLike) -> Scalar:  # type: ignore[override]
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return EQ.apply(self, b)
 
     def __sub__(self, b: ScalarLike) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return Add.apply(self, -b)
 
     def __neg__(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return Neg.apply(self)
 
     def __radd__(self, b: ScalarLike) -> Scalar:
         return self + b
-
+    # for the operations where the Scalar is on the right hand side, we just write this statement to indicate to use Add
     def __rmul__(self, b: ScalarLike) -> Scalar:
         return self * b
 
     def log(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return Log.apply(self)
 
     def exp(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return Exp.apply(self)
 
     def sigmoid(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return Sigmoid.apply(self)
 
     def relu(self) -> Scalar:
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # TODO: Implement for Task 1.2.
+        return ReLU.apply(self)
 
     # Variable elements for backprop
 
@@ -158,12 +176,21 @@ class Scalar:
         return self.history.inputs
 
     def chain_rule(self, d_output: Any) -> Iterable[Tuple[Variable, Any]]:
+        # d_output is the partial derivative with respect to the output unit that is coming in, so we need to multiply it /
+        # perform a backward pass to calculate the next set of derivatives to carry over
         h = self.history
         assert h is not None
         assert h.last_fn is not None
         assert h.ctx is not None
 
-        raise NotImplementedError("Need to include this file from past assignment.")
+        # use h.last_fn as the function, and the 
+        last_fn = h.last_fn
+        ctx = h.ctx
+        derivs = last_fn._backward(ctx, d_output)
+        # so now we want derivatives for each of the inputs
+        li = list(zip(h.inputs, derivs))
+        return li
+        # TODO: Implement for Task 1.3.
 
     def backward(self, d_output: Optional[float] = None) -> None:
         """
@@ -196,6 +223,7 @@ but was expecting derivative f'=%f from central difference."""
     for i, x in enumerate(scalars):
         check = central_difference(f, *scalars, arg=i)
         print(str([x.data for x in scalars]), x.derivative, i, check)
+        assert x.is_leaf()
         assert x.derivative is not None
         np.testing.assert_allclose(
             x.derivative,
