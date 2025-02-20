@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Iterable, List, Tuple
-
+from collections import defaultdict
 from typing_extensions import Protocol
 
 # ## Task 1.1
@@ -22,7 +22,13 @@ def central_difference(f: Any, *vals: Any, arg: int = 0, epsilon: float = 1e-6) 
     Returns:
         An approximation of $f'_i(x_0, \ldots, x_{n-1})$
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    vals = list(vals)
+    vals[arg] += epsilon
+    plus_eps = f(*vals)
+    vals[arg] -= 2 * epsilon
+    minus_eps = f(*vals)
+    return (plus_eps - minus_eps) /( 2 * epsilon)
+
 
 
 variable_count = 1
@@ -60,7 +66,26 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     Returns:
         Non-constant Variables in topological order starting from the right.
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    visited = set()
+    ret_li = []
+    def recur(var):
+        nonlocal ret_li
+        if var.unique_id in visited:
+            return
+        for p in var.parents:
+            if not p.is_constant():
+                recur(p)
+        visited.add(var.unique_id)
+        ret_li = [var] + ret_li
+        
+    recur(variable)
+    return ret_li
+                
+
+
+
+    # TODO: Implement for Task 1.4.
+
 
 
 def backpropagate(variable: Variable, deriv: Any) -> None:
@@ -74,8 +99,36 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
 
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
-    raise NotImplementedError("Need to include this file from past assignment.")
+    # TODO: Implement for Task 1.4.
+    # print("First deriv", deriv)
+    queue = topological_sort(variable)
+    # print(queue)
+    scalar_to_deriv = defaultdict(int)
+    scalar_to_deriv[variable.unique_id] = deriv
+    # chain_rule_outputs = right_most.chain_rule(deriv)
+    # for inp, deriv in chain_rule_outputs:
+    #     scalar_to_deriv[repr(inp)] += deriv
+    # the right-most variable begins, by applying chain rule
+    while queue:
+        var = queue.pop(0)
+        if var.is_leaf():
+            continue
+        chain_rule_output = var.chain_rule(scalar_to_deriv[var.unique_id])
+        # print(chain_rule_output)
+        for inp, derivative in chain_rule_output:
+            if inp.is_leaf():
+                inp.accumulate_derivative(derivative)
+                # print(inp.shape)
+            else:
+                scalar_to_deriv[inp.unique_id] += derivative
+            # print(var.grad)
+            # var.derivative = scalar_to_deriv[repr(var)]
+            # print(var.derivative)
+            # print(scalar_to_deriv)
+    # print(scalar_to_deriv)
 
+
+    
 
 @dataclass
 class Context:

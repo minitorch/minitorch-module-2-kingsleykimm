@@ -4,10 +4,10 @@ Be sure you have minitorch installed in you Virtual Env.
 """
 
 import minitorch
-
+import numpy as np
 
 def RParam(*shape):
-    r = 2 * (minitorch.rand(shape) - 0.5)
+    r = 2 * (minitorch.rand(shape, requires_grad=True) - 0.5)
     return minitorch.Parameter(r)
 
 
@@ -22,7 +22,10 @@ class Network(minitorch.Module):
 
     def forward(self, x):
         # TODO: Implement for Task 2.5.
-        raise NotImplementedError("Need to implement for Task 2.5")
+        x = self.layer1.forward(x).relu()
+        x = self.layer2.forward(x).relu()
+        x = self.layer3.forward(x).sigmoid()
+        return x
 
 
 class Linear(minitorch.Module):
@@ -31,10 +34,26 @@ class Linear(minitorch.Module):
         self.weights = RParam(in_size, out_size)
         self.bias = RParam(out_size)
         self.out_size = out_size
-
+        
     def forward(self, x):
         # TODO: Implement for Task 2.5.
-        raise NotImplementedError("Need to implement for Task 2.5")
+        # x should be of in_size, self.weights is a matrix of in_size, out_size that we multiply onto it, using zip? then add self.bias as a broadcast
+        # we could do a summed dot product because we don't have matmul implemented yet
+
+        # x has shape )batch_size, in_size and weights has shape (in_size, out_size)
+        # so we want to multiply across the in_size dimensions
+        batch_size, in_size = x.shape
+        x = x.view(batch_size, in_size, 1)
+        weights = self.weights.value.view(1, in_size, self.out_size)
+
+        # now we cna perform broadcast multiplication, then reduce  
+        p1 = weights * x # nwo of shape (batch-size, in_size, out_size)
+        # self.weights.value = self.weights.value.view(*weights_shape) # (1, in_size, out_size)
+        p1 = p1.sum(dim=1)
+        p1 = p1.view(batch_size, self.out_size)
+        # print("aft", x._tensor.shape)
+        p1 = p1 + self.bias.value.view(1, self.out_size)
+        return p1
 
 
 def default_log_fn(epoch, total_loss, correct, losses):
@@ -91,5 +110,5 @@ if __name__ == "__main__":
     PTS = 50
     HIDDEN = 2
     RATE = 0.5
-    data = minitorch.datasets["Simple"](PTS)
+    data = minitorch.datasets["Circle"](PTS)
     TensorTrain(HIDDEN).train(data, RATE)

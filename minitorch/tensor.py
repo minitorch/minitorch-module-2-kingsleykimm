@@ -355,6 +355,8 @@ class Tensor:
 
         x = h.last_fn._backward(h.ctx, d_output)
         assert len(x) == len(h.inputs), f"Bug in function {h.last_fn}"
+        # returns a list of zipped inputs + derivatives, where the input carries over from backward, but the derivatives are exapnded to ensure that they match
+        # the derivative of the derivative for each one
         return [
             (inp, inp.expand(self._ensure_tensor(d_in)))
             for inp, d_in in zip(h.inputs, x)
