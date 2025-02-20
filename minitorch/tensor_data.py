@@ -88,11 +88,11 @@ def broadcast_index(
         None
     """
     # so is this method just matching up different shapes that match up?
-    for i in range(len(out_index) -1, -1, -1):
-        if shape[i] == 1:
-            out_index[i] = 0
+    for i in range(len(shape)):
+        if shape[len(shape) - i - 1] == 1:
+            out_index[len(shape) - i - 1] = 0
         else:
-            out_index[i] = big_index[i]
+            out_index[len(shape) - i - 1] = big_index[len(big_shape) - i - 1]
 
 
 

@@ -66,7 +66,6 @@ def test_permute(data: DataObject, t1: Tensor) -> None:
 
     def permute(a: Tensor) -> Tensor:
         return a.permute(*permutation)
-
     grad_check(permute, t1)
 
 
@@ -176,7 +175,7 @@ def test_index() -> None:
 
 def test_fromnumpy() -> None:
     t = tensor([[2, 3, 4], [4, 5, 7]])
-    print(t)
+    # print(t)
     assert t.shape == (2, 3)
     n = t.to_numpy()
     t2 = tensor(n.tolist())

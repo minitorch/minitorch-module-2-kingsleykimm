@@ -91,7 +91,11 @@ class TensorBackend:
         self.matrix_multiply = ops.matrix_multiply
         self.cuda = ops.cuda
 
-
+# the SimpleOps are functions that wrap the original fn under either tensor_map, tensor_zip, or tensor_reduce to return a new tensor function
+# Beauty of functional data - you pass functions in as arguments to wrap ways, like here we do fn = tensor_map(fn) to wrap the function in a tensor operation,
+# then we instantiate a new function INSIDE the other function that calls the wrapped tensor function, and then we return the function signature.
+# In this way map() takes in a function fn, wraps it to allow tensor operations, then puts it inside another function and sends it away to allow this kind of nested function hierarchy, where we get
+# to put hierarchal checks, for like different levels of permission as well as use partial arguments
 class SimpleOps(TensorOps):
     @staticmethod
     def map(fn: Callable[[float], float]) -> MapProto:
@@ -269,20 +273,22 @@ def tensor_map(fn: Callable[[float], float]) -> Any:
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-
-        if out_shape == in_shape: # same size tensors
-            for ind in range(len(out)):
-                out[ind] = fn(in_storage[ind])
-        else:
-            if in_shape > out_shape:
-                raise Exception
-            for ind in range(len(out)):
-                big_index = np.ndarray(out_shape)
-                to_index(ind, out_shape, big_index)
-                # cur_index now stores the out tensor's index
-                smaller_index = np.ndarray(in_shape)
-                broadcast_index(big_index, out_shape, in_shape, smaller_index)
-                out[ind] = fn(in_storage[index_to_position(smaller_index, in_strides)])
+        # could be different strides
+        # could be different 
+        # if out_shape.size == in_shape.size: # same size tensors
+        #     for ind in range(len(out)):
+        #         out[ind] = fn(in_storage[ind])
+        # else:
+        #     if in_shape.size > out_shape.size:
+        #         raise Exception
+        for ind in range(len(out)):
+            big_index = out_shape.copy()
+            to_index(ind, out_shape, big_index)
+            # cur_index now stores the out tensor's index
+            # smaller_index = np.ndarray(in_shape)
+            smaller_index = in_shape.copy()
+            broadcast_index(big_index, out_shape, in_shape, smaller_index)
+            out[ind] = fn(in_storage[index_to_position(smaller_index, in_strides)])
             
 
     return _map
@@ -333,25 +339,27 @@ def tensor_zip(fn: Callable[[float, float], float]) -> Any:
         b_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        if out_shape == a_shape:
-            for ind in range(len(a_storage)):
-                # we know that a and b have the same size
-                a_ordinal = ind
-                b_ind = np.ndarray(b_shape)
-                to_index(a_ordinal, b_shape, b_ind)
-                b_ordinal = index_to_position(b_ind, b_strides)
-                result = fn(a_storage[a_ordinal], b_storage[b_ordinal])
-                out[a_ordinal] = result
-        else:
+        # if out_shape.size == a_shape.size:
+        #     for ind in range(len(a_storage)):
+        #         # we know that a and b have the same size
+        #         a_ordinal = ind
+        #         # b_ind = np.ndarray(b_shape)
+        #         b_ind = b_shape.copy()
+        #         to_index(a_ordinal, b_shape, b_ind)
+        #         b_ordinal = index_to_position(b_ind, b_strides)
+        #         result = fn(a_storage[a_ordinal], b_storage[b_ordinal])
+        #         out[a_ordinal] = result
+        # else:
             # now we know that a_shape and b_shape are the same, so we wan to use the out_shape instead
-            for ind in range(len(out)):
-                out_ordinal = ind
-                a_ind, b_ind, out_ind = np.ndarray(a_shape), np.ndarray(b_shape), np.ndarray(out_shape)
-                to_index(out_ordinal, out_shape, out_ind)
-                broadcast_index(out_ind, out_shape, b_shape, b_ind)
-                broadcast_index(out_ind, out_shape, a_shape, a_ind)
-                a_ordinal, b_ordinal = index_to_position(a_ind, a_strides), index_to_position(b_ind, b_strides)
-                out[out_ordinal] = fn(a_storage[a_ordinal], b_storage[b_ordinal])
+        for ind in range(len(out)):
+            out_ordinal = ind
+            # a_ind, b_ind, out_ind = np.ndarray(a_shape), np.ndarray(b_shape), np.ndarray(out_shape)
+            a_ind, b_ind, out_ind = a_shape.copy(), b_shape.copy(), out_shape.copy()
+            to_index(out_ordinal, out_shape, out_ind)
+            broadcast_index(out_ind, out_shape, b_shape, b_ind)
+            broadcast_index(out_ind, out_shape, a_shape, a_ind)
+            a_ordinal, b_ordinal = index_to_position(a_ind, a_strides), index_to_position(b_ind, b_strides)
+            out[out_ordinal] = fn(a_storage[a_ordinal], b_storage[b_ordinal])
     return _zip
 
 
@@ -385,7 +393,21 @@ def tensor_reduce(fn: Callable[[float, float], float]) -> Any:
         a_strides: Strides,
         reduce_dim: int,
     ) -> None:
-        # out shape is the same s in shape but 
+        # reduced to 1
+    # so do we iterate through shape or length of storage in this case? 
+    # example reduce: (5, 4, 3), reduce_dim = 0 with fn
+    # ah maybe a better way to is use to index_broadcast? since out_shape is already set up
+
+        for a_ordinal in range(len(a_storage)):
+            # a_ind = np.ndarray(a_shape)
+            a_ind = a_shape.copy()
+            to_index(a_ordinal, a_shape, a_ind)
+            # out_ind = np.ndarray(out_shape)
+            out_ind = out_shape.copy()
+            broadcast_index(a_ind, a_shape, out_shape, out_ind)
+            out_ordinal = index_to_position(out_ind, out_strides)
+            # so out_ind has the new_index
+            out[out_ordinal] = fn(out[out_ordinal], a_storage[a_ordinal])
 
     return _reduce
 

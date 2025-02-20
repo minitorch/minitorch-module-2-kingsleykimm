@@ -100,24 +100,28 @@ def backpropagate(variable: Variable, deriv: Any) -> None:
     No return. Should write to its results to the derivative values of each leaf through `accumulate_derivative`.
     """
     # TODO: Implement for Task 1.4.
+    # print("First deriv", deriv)
     queue = topological_sort(variable)
-    print(queue)
+    # print(queue)
     scalar_to_deriv = defaultdict(int)
-    scalar_to_deriv[queue[0].unique_id] = deriv
+    scalar_to_deriv[variable.unique_id] = deriv
     # chain_rule_outputs = right_most.chain_rule(deriv)
     # for inp, deriv in chain_rule_outputs:
     #     scalar_to_deriv[repr(inp)] += deriv
     # the right-most variable begins, by applying chain rule
     while queue:
         var = queue.pop(0)
-        if not var.is_leaf():
-            chain_rule_output = var.chain_rule(scalar_to_deriv[var.unique_id])
-            print(chain_rule_output)
-            for inp, derivative in chain_rule_output:
-                if not inp.is_constant():
-                    scalar_to_deriv[inp.unique_id] += derivative
-        else:
-            var.accumulate_derivative(scalar_to_deriv[var.unique_id])
+        if var.is_leaf():
+            continue
+        chain_rule_output = var.chain_rule(scalar_to_deriv[var.unique_id])
+        # print(chain_rule_output)
+        for inp, derivative in chain_rule_output:
+            if inp.is_leaf():
+                inp.accumulate_derivative(derivative)
+                # print(inp.shape)
+            else:
+                scalar_to_deriv[inp.unique_id] += derivative
+            # print(var.grad)
             # var.derivative = scalar_to_deriv[repr(var)]
             # print(var.derivative)
             # print(scalar_to_deriv)

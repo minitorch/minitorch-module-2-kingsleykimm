@@ -72,7 +72,7 @@ def max(a: float, b: float) -> float:
 
 def is_close(a: float, b: float) -> float:
     """Checks if two numbers are close in value"""
-    return (a - b) < 1e-8
+    return abs(a - b) < 1e-2
 
 
 def sigmoid(x: float) -> float:

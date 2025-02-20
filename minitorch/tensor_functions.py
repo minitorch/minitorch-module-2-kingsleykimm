@@ -49,7 +49,7 @@ class Function:
             raw_vals.append(v.detach())
 
         # Create the context.
-        ctx = Context(not need_grad)
+        ctx = Context(not need_grad) # context contains no grad so we just do the oposite
 
         # Call forward with the variables.
         c = cls._forward(ctx, *raw_vals)
@@ -89,7 +89,8 @@ class Inv(Function):
 class Add(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
-        return t1.f.add_zip(t1, t2)
+        ret = t1.f.add_zip(t1, t2)
+        return ret
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
@@ -100,60 +101,78 @@ class Mul(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        ctx.save_for_backward(a, b)
+
+        return a.f.mul_zip(a, b) # f is the tensor backend, we call mul_zip
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (a, b )= ctx.saved_values
+        return a.f.mul_zip(b, grad_output), b.f.mul_zip(a, grad_output)
+        # first tensor is the gradient of the current function, second value is the incoming gradient output tensor, which is matched with a zip to create the same size tensor as b?
+        # can we ensure that these are the same size? well the output will be the same size zipped, so yes
 
 
 class Sigmoid(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        sig_val = t1.f.sigmoid_map(t1)
+        ctx.save_for_backward(sig_val)
+        return sig_val
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (sig_val,) = ctx.saved_values
+        # derivative of sigmoid is s (1 - s) * grad_output? but since this is a map are we just mapping these outputs? Now we're doing a mulzip
+        negative_sig = Neg.apply(sig_val) + 1
+        sigmoid_back = sig_val.f.mul_zip(sig_val, negative_sig)
+        return sigmoid_back.f.mul_zip(sigmoid_back, grad_output) # so it returns the multiplication of zip
 
 
 class ReLU(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        ctx.save_for_backward(t1)
+        return t1.f.relu_map(t1)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (t1,) = ctx.saved_values
+        return t1.f.relu_back_zip(t1, grad_output)
 
 
 class Log(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        ctx.save_for_backward(t1)
+        return t1.f.log_map(t1)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (t1, ) = ctx.saved_values
+        return t1.f.log_back_zip(t1, grad_output)
 
 
 class Exp(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        exp =  t1.f.exp_map(t1)
+        ctx.save_for_backward(exp)
+        return exp
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (exp, ) = ctx.saved_values
+        return exp.f.mul_zip(exp, grad_output)
 
 
 class Sum(Function):
@@ -181,43 +200,64 @@ class LT(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        ctx.save_for_backward(a, b)
+        return a.f.lt_zip(a, b)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (a, b) = ctx.saved_values
+        return zeros(a.shape), zeros(a.shape)
 
 
 class EQ(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        ctx.save_for_backward(a)
+        return a.f.eq_zip(a, b)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        (a,) = ctx.saved_values
+        return zeros(a.shape), zeros(a.shape)
 
 
 class IsClose(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, b: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
-
+        val = a.f.is_close_zip(a, b)
+        # so this is going to be a bunch of true values
+        return val
 
 class Permute(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, order: Tensor) -> Tensor:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+
+        # permutation is going to be a tensor with elements (0, .. n -1), where it could be like (0, 3, 2, 1) . so when we want to reverse this operation that puts the three in one, we want to say put 
+        # (2, 4, 1, 3, 0)
+        int_order = [int(x) for x in order._tensor._storage]
+        # conver it from numpy.float64 -> int
+        ctx.save_for_backward(int_order)
+        return a._new(a._tensor.permute(*int_order))
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, float]:
         # TODO: Implement for Task 2.4.
-        raise NotImplementedError("Need to implement for Task 2.4")
+        # what is the derivative of a permute operation?
+        # the permute order gives a reording of the tensor, where different areas map to different places, so the gradient will be mapped to those areas?
+        (int_order,) = ctx.saved_values
+        # what is the derivative of the order? 
+        # so the int_order is the -> direction, where (2, 4, 3, 1, 0). So 2 -> 0, 4 -> 1, 3 -> 2, 1 -> 3, 0 -> 4
+        recover = {val : i for i, val in enumerate(int_order)}
+        new_order = [0] * len(int_order)
+        for key in recover:
+            new_order[key] = recover[key]
+        return grad_output._new(grad_output._tensor.permute(*new_order)), 0.0
+
 
 
 class View(Function):
@@ -399,7 +439,6 @@ Received derivative %f for argument %d and index %s,
 but was expecting derivative %f from central difference.
 
 """
-
     for i, x in enumerate(vals):
         ind = x._tensor.sample()
         check = grad_central_difference(f, *vals, arg=i, ind=ind)

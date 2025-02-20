@@ -29,5 +29,7 @@ class SGD(Optimizer):
             if p.value is None:
                 continue
             elif hasattr(p.value, "grad"):
+                # print("has grad", p.value.grad)
                 if p.value.grad is not None:
+
                     p.update(p.value - self.lr * p.value.grad)
